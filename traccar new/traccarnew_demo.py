@@ -9,7 +9,7 @@ import os
 # === Configuration ===
 TRACCAR_DEVICES_URL = 'https://demo4.traccar.org/api/devices'
 TRACCAR_POSITIONS_URL = 'https://demo4.traccar.org/api/positions'
-TRACCAR_AUTH = ('username', 'password')  # Replace with actual Traccar credentials
+TRACCAR_AUTH = ('your_username', 'your_password')  # Replace with actual Traccar credentials
 
 OUTPUT_DIR = r'C:\Users\Mark\Desktop\test\gladefilehosting\BODS mock'
 XML_PATH = os.path.join(OUTPUT_DIR, 'siri.xml')
@@ -34,7 +34,7 @@ def build_vehicle_activity(position, attributes):
     service_code = attributes.get('ticketMachineServiceCode', 'NOTTINGHAM')
     block_ref = attributes.get('blockRef', '1')
     vehicle_unique_id = attributes.get('vehicleUniqueId', str(position['deviceId']))
-    origin_aimed_departure_time = attributes.get('originAimedDepartureTime')
+    origin_aimed_departure_time = position.get('deviceTime')
     destination_aimed_arrival_time = attributes.get('destinationAimedArrivalTime')
 
     root = ET.Element('VehicleActivity')

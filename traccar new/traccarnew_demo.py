@@ -136,4 +136,4 @@ if __name__ == "__main__":
             update_xml()
         except Exception as e:
             print(f"Error: {e}")
-        time.sleep(10)
+        time.sleep(5)

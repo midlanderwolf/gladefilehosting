@@ -11,7 +11,7 @@ TRACCAR_DEVICES_URL = 'https://demo4.traccar.org/api/devices'
 TRACCAR_POSITIONS_URL = 'https://demo4.traccar.org/api/positions'
 TRACCAR_AUTH = ('your_username', 'your_password')  # Replace with actual Traccar credentials
 
-OUTPUT_DIR = 'C:\OutputDir'
+OUTPUT_DIR = r'C:\Users\Mark\Desktop\test\gladefilehosting\BODS mock'
 XML_PATH = os.path.join(OUTPUT_DIR, 'siri.xml')
 ZIP_PATH = os.path.join(OUTPUT_DIR, 'siri.zip')
 
@@ -54,7 +54,7 @@ def build_vehicle_activity(position, attributes):
 
     frame = ET.SubElement(journey, 'FramedVehicleJourneyRef')
     ET.SubElement(frame, 'DataFrameRef').text = now.split("T")[0]
-    ET.SubElement(frame, 'DatedVehicleJourneyRef').text = str(position['id'])
+    # DatedVehicleJourneyRef has been removed as requested
 
     ET.SubElement(journey, 'PublishedLineName').text = published_line_name
     ET.SubElement(journey, 'OperatorRef').text = operator_ref

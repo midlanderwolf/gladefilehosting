@@ -1,13 +1,16 @@
-lineRef                  - The route or service line identifier (e.g., "3C").
-directionRef             - The direction of travel (e.g., "inbound", "outbound").
-publishedLineName        - Human-readable name of the line (usually same as lineRef).
-operatorRef              - The operator code (e.g., "TBTN").
-originRef                - The stop code for origin.
-originName               - The stop name for origin.
-destinationRef           - The stop code for destination.
-destinationName          - The stop name for destination.
-ticketMachineServiceCode - The code used by onboard ticketing systems (e.g., "3C").
-journeyCode              - Internal journey identifier.
-blockRef                - The block number that groups several trips.
-vehicleUniqueId          - A unique vehicle ID string (e.g., fleet number).
-vehicleRef               - The value shown in <VehicleRef> (can be license plate or ID).
+
+Traccar Attributes Used:
+------------------------
+1. lineRef                   - Used for <LineRef>: identifies the route or line the vehicle is operating on.
+2. directionRef              - Used for <DirectionRef>: specifies the direction of the route.
+3. publishedLineName         - Used for <PublishedLineName>: human-readable name for the line.
+4. operatorRef               - Used for <OperatorRef>: the ID or code of the operating company.
+5. originRef                 - Used for <OriginRef>: ID of the origin stop.
+6. originName                - Used for <OriginName>: name of the origin stop.
+7. destinationRef            - Used for <DestinationRef>: ID of the destination stop.
+8. destinationName           - Used for <DestinationName>: name of the destination stop.
+9. journeyCode               - Used in <JourneyCode>: identifies the specific journey instance.
+10. ticketMachineServiceCode - Used in <TicketMachineServiceCode>: service code shown on the ticket machine.
+11. blockRef                 - Used in <BlockRef>: helps group journeys operated by the same vehicle.
+12. vehicleUniqueId          - Used in <VehicleUniqueId>: unique ID for the physical vehicle.
+13. vehicleRef               - Used for <VehicleRef> and <ItemIdentifier>: consistent vehicle identifier.

@@ -19,6 +19,12 @@ ZIP_PATH = os.path.join(OUTPUT_DIR, 'siri.zip')
 def iso_time_now():
     return datetime.now(timezone.utc).isoformat()
 
+def validate_attributes(device_id, attributes):
+    required = ['lineRef', 'ticketMachineServiceCode', 'journeyCode']
+    missing = [key for key in required if key not in attributes or not attributes[key]]
+    if missing:
+        print(f"Warning: Device {device_id} missing required attributes: {', '.join(missing)}")
+
 def build_vehicle_activity(position, attributes):
     now = iso_time_now()
 
@@ -99,6 +105,11 @@ def fetch_data():
     positions = requests.get(TRACCAR_POSITIONS_URL, auth=TRACCAR_AUTH).json()
 
     device_map = {device['id']: device for device in devices}
+
+    # Validate all attributes
+    for device_id, device in device_map.items():
+        validate_attributes(device_id, device.get('attributes', {}))
+
     return [(pos, device_map.get(pos['deviceId'], {})) for pos in positions]
 
 def update_xml():

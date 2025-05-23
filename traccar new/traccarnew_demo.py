@@ -38,13 +38,19 @@ def build_vehicle_activity(position, attributes):
     origin_aimed_departure_time = position.get('deviceTime')
     destination_aimed_arrival_time = None
 
+    dated_vehicle_journey_ref = attributes.get('datedVehicleJourneyRef')
+
     if origin_aimed_departure_time:
         dt_origin = datetime.fromisoformat(origin_aimed_departure_time.replace('Z', '+00:00'))
         destination_aimed_arrival_time = (dt_origin + timedelta(hours=1)).isoformat()
 
+        if not dated_vehicle_journey_ref:
+            departure_date = dt_origin.strftime('%Y%m%d')
+            dated_vehicle_journey_ref = f"{line_ref}_{direction_ref}_{departure_date}_{journey_code}"
+
     root = ET.Element('VehicleActivity')
     ET.SubElement(root, 'RecordedAtTime').text = now
-    ET.SubElement(root, 'ItemIdentifier').text = str(uuid.uuid4())
+    ET.SubElement(root, 'ItemIdentifier').text = vehicle_ref  # use vehicle_ref as unique identifier
     valid_until = datetime.now(timezone.utc) + timedelta(minutes=6)
     ET.SubElement(root, 'ValidUntilTime').text = valid_until.isoformat()
 
@@ -54,7 +60,8 @@ def build_vehicle_activity(position, attributes):
 
     frame = ET.SubElement(journey, 'FramedVehicleJourneyRef')
     ET.SubElement(frame, 'DataFrameRef').text = now.split("T")[0]
-    # DatedVehicleJourneyRef has been removed as requested
+    if dated_vehicle_journey_ref:
+        ET.SubElement(frame, 'DatedVehicleJourneyRef').text = dated_vehicle_journey_ref
 
     ET.SubElement(journey, 'PublishedLineName').text = published_line_name
     ET.SubElement(journey, 'OperatorRef').text = operator_ref
@@ -85,7 +92,7 @@ def build_vehicle_activity(position, attributes):
     ET.SubElement(tm, 'JourneyCode').text = journey_code
     ET.SubElement(vj, 'VehicleUniqueId').text = vehicle_unique_id
 
-    return root
+    return root, vehicle_ref
 
 def fetch_data():
     devices = requests.get(TRACCAR_DEVICES_URL, auth=TRACCAR_AUTH).json()
@@ -113,9 +120,15 @@ def update_xml():
     ET.SubElement(vmd, 'ValidUntil').text = timestamp
     ET.SubElement(vmd, 'ShortestPossibleCycle').text = 'PT5S'
 
+    vehicle_map = {}
+
     for position, device in fetch_data():
         attributes = device.get('attributes', {})
-        vmd.append(build_vehicle_activity(position, attributes))
+        vehicle_element, vehicle_ref = build_vehicle_activity(position, attributes)
+        vehicle_map[vehicle_ref] = vehicle_element
+
+    for element in vehicle_map.values():
+        vmd.append(element)
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     tree = ET.ElementTree(siri)

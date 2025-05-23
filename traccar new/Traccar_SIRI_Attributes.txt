@@ -1,0 +1,28 @@
+
+Traccar Device Attributes for SIRI XML
+
+Journey & Vehicle Attributes
+----------------------------
+lineRef                  - Bus route or line code (<LineRef>)                        e.g., 3C
+directionRef             - Journey direction (<DirectionRef>)                        e.g., inbound
+publishedLineName        - Human-readable line name (<PublishedLineName>)            e.g., 3C
+operatorRef              - Transport operator code (<OperatorRef>)                   e.g., TBTN
+originRef                - Origin stop code (<OriginRef>)                            e.g., 3300MA0708
+originName               - Origin stop name (<OriginName>)                           e.g., Mansfield_Bus_Station
+destinationRef           - Destination stop code (<DestinationRef>)                  e.g., 3390VB03
+destinationName          - Destination stop name (<DestinationName>)                 e.g., Victoria_Bus_Station
+blockRef                 - Block reference for grouping services (<BlockRef>)        e.g., F505
+vehicleUniqueId          - Unique vehicle identifier (<VehicleUniqueId>)             e.g., 0188
+journeyCode              - Internal journey identifier (<JourneyCode>)               e.g., 0905
+ticketMachineServiceCode - Code for ticketing system integration (<TicketMachineServiceCode>) e.g., 3C
+
+Timed Events
+------------
+originAimedDepartureTime    - Scheduled departure from origin (<OriginAimedDepartureTime>)         e.g., 2025-05-23T08:05:00+00:00
+destinationAimedArrivalTime - Scheduled arrival at destination (<DestinationAimedArrivalTime>)     e.g., 2025-05-23T09:30:00+00:00
+
+Location-Based Info (from Traccar Position)
+-------------------------------------------
+latitude   - Vehicle latitude (<Latitude>)           e.g., 52.982316
+longitude  - Vehicle longitude (<Longitude>)         e.g., -1.157895
+bearing    - Vehicle bearing or heading (<Bearing>)  e.g., 169

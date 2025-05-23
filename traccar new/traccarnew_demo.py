@@ -34,8 +34,13 @@ def build_vehicle_activity(position, attributes):
     service_code = attributes.get('ticketMachineServiceCode', 'NOTTINGHAM')
     block_ref = attributes.get('blockRef', '1')
     vehicle_unique_id = attributes.get('vehicleUniqueId', str(position['deviceId']))
+    vehicle_ref = attributes.get('vehicleRef', str(position['deviceId']))
     origin_aimed_departure_time = position.get('deviceTime')
-    destination_aimed_arrival_time = attributes.get('destinationAimedArrivalTime')
+    destination_aimed_arrival_time = None
+
+    if origin_aimed_departure_time:
+        dt_origin = datetime.fromisoformat(origin_aimed_departure_time.replace('Z', '+00:00'))
+        destination_aimed_arrival_time = (dt_origin + timedelta(hours=1)).isoformat()
 
     root = ET.Element('VehicleActivity')
     ET.SubElement(root, 'RecordedAtTime').text = now
@@ -70,7 +75,7 @@ def build_vehicle_activity(position, attributes):
     ET.SubElement(location, 'Latitude').text = str(position['latitude'])
 
     ET.SubElement(journey, 'BlockRef').text = block_ref
-    ET.SubElement(journey, 'VehicleRef').text = str(position['deviceId'])
+    ET.SubElement(journey, 'VehicleRef').text = vehicle_ref
 
     extensions = ET.SubElement(root, 'Extensions')
     vj = ET.SubElement(extensions, 'VehicleJourney')

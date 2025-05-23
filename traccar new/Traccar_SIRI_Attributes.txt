@@ -1,4 +1,4 @@
-Attribute Name                  | Example Value              | Description
+Attribute Name                 | Example Value              | Description
 -------------------------------|----------------------------|-----------------------------------------------------
 lineRef                        | L1                         | The route or line reference.
 directionRef                   | outbound                   | The direction of the journey.

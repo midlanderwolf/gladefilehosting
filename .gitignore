@@ -1,3 +1,2 @@
 traccar new/traccarnew.py
-traccar new/push-everything.ps1
-
+push-everything.ps1

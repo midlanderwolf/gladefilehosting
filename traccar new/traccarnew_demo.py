@@ -11,7 +11,7 @@ TRACCAR_DEVICES_URL = 'https://demo4.traccar.org/api/devices'
 TRACCAR_POSITIONS_URL = 'https://demo4.traccar.org/api/positions'
 TRACCAR_AUTH = ('your_username', 'your_password')  # Replace with actual Traccar credentials
 
-OUTPUT_DIR = r'C:\Users\Mark\Desktop\test\gladefilehosting\BODS mock'
+OUTPUT_DIR = 'C:\OutputDir'
 XML_PATH = os.path.join(OUTPUT_DIR, 'siri.xml')
 ZIP_PATH = os.path.join(OUTPUT_DIR, 'siri.zip')
 

@@ -5,6 +5,7 @@ import time
 import uuid
 import zipfile
 import os
+import json
 
 # === Configuration ===
 TRACCAR_DEVICES_URL = 'https://demo4.traccar.org/api/devices'
@@ -14,16 +15,24 @@ TRACCAR_AUTH = ('your_username', 'your_password')  # Replace with actual Traccar
 OUTPUT_DIR = r'C:\Users\Mark\Desktop\test\gladefilehosting\BODS mock'
 XML_PATH = os.path.join(OUTPUT_DIR, 'siri.xml')
 ZIP_PATH = os.path.join(OUTPUT_DIR, 'siri.zip')
+CACHE_PATH = os.path.join(OUTPUT_DIR, 'origin_time_cache.json')
+
+# === Global Cache ===
+origin_time_cache = {}
 
 # === Helper Functions ===
 def iso_time_now():
     return datetime.now(timezone.utc).isoformat()
 
-def validate_attributes(device_id, attributes):
-    required = ['lineRef', 'ticketMachineServiceCode', 'journeyCode']
-    missing = [key for key in required if key not in attributes or not attributes[key]]
-    if missing:
-        print(f"Warning: Device {device_id} missing required attributes: {', '.join(missing)}")
+def load_origin_time_cache():
+    global origin_time_cache
+    if os.path.exists(CACHE_PATH):
+        with open(CACHE_PATH, 'r') as f:
+            origin_time_cache = json.load(f)
+
+def save_origin_time_cache():
+    with open(CACHE_PATH, 'w') as f:
+        json.dump(origin_time_cache, f)
 
 def build_vehicle_activity(position, attributes):
     now = iso_time_now()
@@ -40,23 +49,27 @@ def build_vehicle_activity(position, attributes):
     service_code = attributes.get('ticketMachineServiceCode', 'NOTTINGHAM')
     block_ref = attributes.get('blockRef', '1')
     vehicle_unique_id = attributes.get('vehicleUniqueId', str(position['deviceId']))
-    vehicle_ref = attributes.get('vehicleRef', str(position['deviceId']))
-    origin_aimed_departure_time = position.get('deviceTime')
-    destination_aimed_arrival_time = None
-
     dated_vehicle_journey_ref = attributes.get('datedVehicleJourneyRef')
 
-    if origin_aimed_departure_time:
-        dt_origin = datetime.fromisoformat(origin_aimed_departure_time.replace('Z', '+00:00'))
-        destination_aimed_arrival_time = (dt_origin + timedelta(hours=1)).isoformat()
+    raw_departure_time = position.get('deviceTime')
+    origin_aimed_departure_time = None
+    destination_aimed_arrival_time = None
 
-        if not dated_vehicle_journey_ref:
-            departure_date = dt_origin.strftime('%Y%m%d')
-            dated_vehicle_journey_ref = f"{line_ref}_{direction_ref}_{departure_date}_{journey_code}"
+    if raw_departure_time:
+        dt_origin = datetime.fromisoformat(raw_departure_time.replace('Z', '+00:00'))
+
+        journey_key = dated_vehicle_journey_ref or f"{line_ref}_{direction_ref}_{dt_origin.strftime('%Y%m%d')}_{journey_code}"
+
+        # Set the departure time if not already cached
+        if journey_key not in origin_time_cache:
+            origin_time_cache[journey_key] = dt_origin.isoformat()
+
+        origin_aimed_departure_time = origin_time_cache[journey_key]
+        destination_aimed_arrival_time = (datetime.fromisoformat(origin_aimed_departure_time) + timedelta(hours=1)).isoformat()
 
     root = ET.Element('VehicleActivity')
     ET.SubElement(root, 'RecordedAtTime').text = now
-    ET.SubElement(root, 'ItemIdentifier').text = vehicle_ref  # use vehicle_ref as unique identifier
+    ET.SubElement(root, 'ItemIdentifier').text = str(uuid.uuid4())
     valid_until = datetime.now(timezone.utc) + timedelta(minutes=6)
     ET.SubElement(root, 'ValidUntilTime').text = valid_until.isoformat()
 
@@ -66,8 +79,7 @@ def build_vehicle_activity(position, attributes):
 
     frame = ET.SubElement(journey, 'FramedVehicleJourneyRef')
     ET.SubElement(frame, 'DataFrameRef').text = now.split("T")[0]
-    if dated_vehicle_journey_ref:
-        ET.SubElement(frame, 'DatedVehicleJourneyRef').text = dated_vehicle_journey_ref
+    ET.SubElement(frame, 'DatedVehicleJourneyRef').text = dated_vehicle_journey_ref or journey_key
 
     ET.SubElement(journey, 'PublishedLineName').text = published_line_name
     ET.SubElement(journey, 'OperatorRef').text = operator_ref
@@ -88,7 +100,7 @@ def build_vehicle_activity(position, attributes):
     ET.SubElement(location, 'Latitude').text = str(position['latitude'])
 
     ET.SubElement(journey, 'BlockRef').text = block_ref
-    ET.SubElement(journey, 'VehicleRef').text = vehicle_ref
+    ET.SubElement(journey, 'VehicleRef').text = str(position['deviceId'])
 
     extensions = ET.SubElement(root, 'Extensions')
     vj = ET.SubElement(extensions, 'VehicleJourney')
@@ -98,18 +110,12 @@ def build_vehicle_activity(position, attributes):
     ET.SubElement(tm, 'JourneyCode').text = journey_code
     ET.SubElement(vj, 'VehicleUniqueId').text = vehicle_unique_id
 
-    return root, vehicle_ref
+    return root
 
 def fetch_data():
     devices = requests.get(TRACCAR_DEVICES_URL, auth=TRACCAR_AUTH).json()
     positions = requests.get(TRACCAR_POSITIONS_URL, auth=TRACCAR_AUTH).json()
-
     device_map = {device['id']: device for device in devices}
-
-    # Validate all attributes
-    for device_id, device in device_map.items():
-        validate_attributes(device_id, device.get('attributes', {}))
-
     return [(pos, device_map.get(pos['deviceId'], {})) for pos in positions]
 
 def update_xml():
@@ -131,15 +137,9 @@ def update_xml():
     ET.SubElement(vmd, 'ValidUntil').text = timestamp
     ET.SubElement(vmd, 'ShortestPossibleCycle').text = 'PT5S'
 
-    vehicle_map = {}
-
     for position, device in fetch_data():
         attributes = device.get('attributes', {})
-        vehicle_element, vehicle_ref = build_vehicle_activity(position, attributes)
-        vehicle_map[vehicle_ref] = vehicle_element
-
-    for element in vehicle_map.values():
-        vmd.append(element)
+        vmd.append(build_vehicle_activity(position, attributes))
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     tree = ET.ElementTree(siri)
@@ -148,10 +148,12 @@ def update_xml():
     with zipfile.ZipFile(ZIP_PATH, 'w', zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(XML_PATH, arcname='siri.xml')
 
+    save_origin_time_cache()
     print(f"[{timestamp}] XML saved to {XML_PATH} and zipped as {ZIP_PATH}")
 
 # === Main Loop ===
 if __name__ == "__main__":
+    load_origin_time_cache()
     while True:
         try:
             update_xml()

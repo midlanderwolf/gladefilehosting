@@ -15,6 +15,9 @@ OUTPUT_DIR = r'C:\Users\Mark\Desktop\test\gladefilehosting\BODS mock'
 XML_PATH = os.path.join(OUTPUT_DIR, 'siri.xml')
 ZIP_PATH = os.path.join(OUTPUT_DIR, 'siri.zip')
 
+# Dictionary to track last seen times
+last_seen = {}  # key: device_id, value: datetime
+
 # === Helper Functions ===
 def iso_time_now():
     return datetime.now(timezone.utc).isoformat()
@@ -33,8 +36,7 @@ def build_vehicle_activity(position, attributes):
     journey_code = attributes.get('journeyCode', '1025')
     service_code = attributes.get('ticketMachineServiceCode', 'NOTTINGHAM')
     block_ref = attributes.get('blockRef', '1')
-    vehicle_unique_id = attributes.get('vehicleUniqueId')
-    dated_vehicle_journey_ref = attributes.get('datedVehicleJourneyRef', '0000')
+    vehicle_unique_id = attributes.get('vehicleUniqueId', str(position['deviceId']))
     origin_aimed_departure_time = position.get('deviceTime')
     destination_aimed_arrival_time = None
 
@@ -54,7 +56,7 @@ def build_vehicle_activity(position, attributes):
 
     frame = ET.SubElement(journey, 'FramedVehicleJourneyRef')
     ET.SubElement(frame, 'DataFrameRef').text = now.split("T")[0]
-    ET.SubElement(frame, 'DatedVehicleJourneyRef').text = dated_vehicle_journey_ref
+    ET.SubElement(frame, 'DatedVehicleJourneyRef').text = attributes.get('datedVehicleJourneyRef', 'UNKNOWN')
 
     ET.SubElement(journey, 'PublishedLineName').text = published_line_name
     ET.SubElement(journey, 'OperatorRef').text = operator_ref
@@ -75,10 +77,7 @@ def build_vehicle_activity(position, attributes):
     ET.SubElement(location, 'Latitude').text = str(position['latitude'])
 
     ET.SubElement(journey, 'BlockRef').text = block_ref
-
-    # Updated VehicleRef logic
-    if vehicle_unique_id:
-        ET.SubElement(journey, 'VehicleRef').text = vehicle_unique_id
+    ET.SubElement(journey, 'VehicleRef').text = attributes.get('vehicleRef', str(position['deviceId']))
 
     extensions = ET.SubElement(root, 'Extensions')
     vj = ET.SubElement(extensions, 'VehicleJourney')
@@ -86,7 +85,7 @@ def build_vehicle_activity(position, attributes):
     tm = ET.SubElement(op, 'TicketMachine')
     ET.SubElement(tm, 'TicketMachineServiceCode').text = service_code
     ET.SubElement(tm, 'JourneyCode').text = journey_code
-    ET.SubElement(vj, 'VehicleUniqueId').text = vehicle_unique_id or 'null'
+    ET.SubElement(vj, 'VehicleUniqueId').text = vehicle_unique_id
 
     return root
 
@@ -98,6 +97,7 @@ def fetch_data():
     return [(pos, device_map.get(pos['deviceId'], {})) for pos in positions]
 
 def update_xml():
+    global last_seen
     siri = ET.Element('Siri', attrib={
         'version': '2.0',
         'xmlns': 'http://www.siri.org.uk/siri',
@@ -116,9 +116,18 @@ def update_xml():
     ET.SubElement(vmd, 'ValidUntil').text = timestamp
     ET.SubElement(vmd, 'ShortestPossibleCycle').text = 'PT5S'
 
+    now = datetime.utcnow()
     for position, device in fetch_data():
+        device_id = position['deviceId']
         attributes = device.get('attributes', {})
-        vmd.append(build_vehicle_activity(position, attributes))
+
+        # Update last seen timestamp
+        last_seen[device_id] = now
+
+        # Remove devices not seen in the last 15 minutes
+        active_devices = {k: v for k, v in last_seen.items() if now - v <= timedelta(minutes=15)}
+        if device_id in active_devices:
+            vmd.append(build_vehicle_activity(position, attributes))
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     tree = ET.ElementTree(siri)
@@ -136,4 +145,4 @@ if __name__ == "__main__":
             update_xml()
         except Exception as e:
             print(f"Error: {e}")
-        time.sleep(5)
+        time.sleep(10)
